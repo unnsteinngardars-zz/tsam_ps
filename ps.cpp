@@ -1,11 +1,14 @@
 #include <stdio.h>
-#include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#include <vector>
+#include <numeric>
+#include <random>
+#include <chrono>
+// #include <sys/types.h>
+// #include <sys/socket.h>
+// #include <netinet/in.h>
 #include <netdb.h>
 
 void error(const char *msg)
@@ -14,7 +17,7 @@ void error(const char *msg)
 	exit(0);
 }
 
-/* create a socket */
+/* create a socket file descriptor */
 void createSocket(int &socketfd)
 {
 	socketfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
@@ -44,19 +47,61 @@ void populateSocketAddress(sockaddr_in &address, hostent *&server, int port)
 	address.sin_port = htons(port);
 }
 
+/**
+ * remove and return a random port from the given vector
+ * @param vector the vector to remove a port from
+ * @param random_device integer random generator used as seed
+ * @param mt pseudo random generator used to generate random element from vector
+*/
+int getRandomPort(std::vector<int> &vector, std::random_device &random_device, std::mt19937 &mt)
+{
+	// Create random integers from 0 to vector.size() - 1;
+	// std::random_device random_device;
+	// std::mt19937 mt(random_device());
+	std::uniform_int_distribution<int> uid(0, vector.size() - 1);
+	// Use the random integer as index to get random element;
+	int random = vector[uid(mt)];
+	// Remove randomly selected element from vector
+	for (std::vector<int>::iterator it = vector.begin(); it != vector.end(); it++)
+	{
+		if (*it == random)
+		{
+			vector.erase(it);
+			break;
+		}
+	}
+	return random;
+}
+
 int main(int argc, char *argv[])
 {
-	/* variables */
+	std::chrono::high_resolution_clock::time_point started = std::chrono::high_resolution_clock::now();
+
+	/* List of common ports based on https://bitninja.io/blog/2017/12/21/port-scanning-which-are-most-scanned-ports */
+	int commonPorts[31] = {23, 445, 1433, 2323, 110, 669, 8080, 3389, 79, 1350, 81, 5900, 2251, 2222, 139, 1417, 1103, 9000, 5000, 3372, 21, 1347, 42, 7000, 7938, 3390, 17, 1296, 119, 8000, 9010};
+
+	/* VARIABLES */
+
+	/* MIN = 1, MAX = 49151 */
 	int MIN_PORT = 1;
 	int MAX_PORT = 49151;
-	int socketfd, c;
 
+	/* Initialize random generator to be used to select port randomly */
+	std::random_device random_device;
+	std::mt19937 mt(random_device());
+
+	/* create a vector with all ports to be scanned */
+	std::vector<int> ports(MAX_PORT); // ports should take MAX_PORT as argument
+	std::iota(ports.begin(), ports.end(), MIN_PORT);
+
+	int socketfd, c, closed;
+
+	/* counter for closed ports */
+	closed = 0;
+
+	/* structs for establishing connections to host */
 	struct sockaddr_in server_addr;
 	struct hostent *server;
-
-	char *host;
-
-	bool printClosed = false;
 
 	/* validate program argument */
 	if (argc < 2)
@@ -66,27 +111,31 @@ int main(int argc, char *argv[])
 	}
 
 	/* grab host from argument */
-	host = argv[1];
+	char *host = argv[1];
 
-	for (int i = MIN_PORT; i <= MAX_PORT; ++i)
+	printf("Scanning open ports for host %s\n\n", host);
+	printf("PORT\tSTATE\n");
+
+	/* TCP connect scan */
+	while (ports.size() > 0)
 	{
 		createSocket(socketfd);
 		getHostByName(server, host);
-		populateSocketAddress(server_addr, server, i);
-		c = connect(socketfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
-		if (c >= 0)
-		{
-			printf("Port: %d\tStatus: Open\n", i);
-		}
+		int port = getRandomPort(ports, random_device, mt);
+		populateSocketAddress(server_addr, server, port);
+		if (connect(socketfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) >= 0)
+			printf("%d\tOpen\n", port);
 		else
 		{
-			if (printClosed)
-			{
-				printf("Port: %d\tStatus: Closed\n", i);
-			}
+			// printf("%d\tClosed\n", port);
+			closed++;
 		}
 		close(socketfd);
 	}
 
+	printf("\nClosed ports: %d\n", closed);
+
+	std::chrono::high_resolution_clock::time_point done = std::chrono::high_resolution_clock::now();
+	printf("Execution time: %d seconds\n", (int)std::chrono::duration_cast<std::chrono::seconds>(done - started).count());
 	return 0;
 }
