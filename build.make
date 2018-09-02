@@ -1,2 +1,2 @@
 ps.o: ps.cpp
-	g++ -o ps ps.cpp
+	g++ -std=c++11 -o ps ps.cpp

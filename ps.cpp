@@ -50,14 +50,12 @@ void populateSocketAddress(sockaddr_in &address, hostent *&server, int port)
 /**
  * remove and return a random port from the given vector
  * @param vector the vector to remove a port from
- * @param random_device integer random generator used as seed
- * @param mt pseudo random generator used to generate random element from vector
 */
-int getRandomPort(std::vector<int> &vector, std::random_device &random_device, std::mt19937 &mt)
+int getRandomPort(std::vector<int> &vector)
 {
 	// Create random integers from 0 to vector.size() - 1;
-	// std::random_device random_device;
-	// std::mt19937 mt(random_device());
+	std::random_device random_device;
+	std::mt19937 mt(random_device());
 	std::uniform_int_distribution<int> uid(0, vector.size() - 1);
 	// Use the random integer as index to get random element;
 	int random = vector[uid(mt)];
@@ -75,6 +73,7 @@ int getRandomPort(std::vector<int> &vector, std::random_device &random_device, s
 
 int main(int argc, char *argv[])
 {
+	/* set timer */
 	std::chrono::high_resolution_clock::time_point started = std::chrono::high_resolution_clock::now();
 
 	/* List of common ports based on https://bitninja.io/blog/2017/12/21/port-scanning-which-are-most-scanned-ports */
@@ -84,20 +83,17 @@ int main(int argc, char *argv[])
 
 	/* MIN = 1, MAX = 49151 */
 	int MIN_PORT = 1;
-	int MAX_PORT = 49151;
-
-	/* Initialize random generator to be used to select port randomly */
-	std::random_device random_device;
-	std::mt19937 mt(random_device());
+	int MAX_PORT = 8000;
 
 	/* create a vector with all ports to be scanned */
 	std::vector<int> ports(MAX_PORT); // ports should take MAX_PORT as argument
 	std::iota(ports.begin(), ports.end(), MIN_PORT);
 
-	int socketfd, c, closed;
+	int socketfd, c, closed, open;
 
 	/* counter for closed ports */
 	closed = 0;
+	open = 0;
 
 	/* structs for establishing connections to host */
 	struct sockaddr_in server_addr;
@@ -121,10 +117,13 @@ int main(int argc, char *argv[])
 	{
 		createSocket(socketfd);
 		getHostByName(server, host);
-		int port = getRandomPort(ports, random_device, mt);
+		int port = getRandomPort(ports);
 		populateSocketAddress(server_addr, server, port);
 		if (connect(socketfd, (struct sockaddr *)&server_addr, sizeof(server_addr)) >= 0)
+		{
 			printf("%d\tOpen\n", port);
+			open++;
+		}
 		else
 		{
 			// printf("%d\tClosed\n", port);
@@ -132,9 +131,9 @@ int main(int argc, char *argv[])
 		}
 		close(socketfd);
 	}
+	printf("\nClosed ports: %d\nOpen ports: %d\n", closed, open);
 
-	printf("\nClosed ports: %d\n", closed);
-
+	/* stop timer */
 	std::chrono::high_resolution_clock::time_point done = std::chrono::high_resolution_clock::now();
 	printf("Execution time: %d seconds\n", (int)std::chrono::duration_cast<std::chrono::seconds>(done - started).count());
 	return 0;
