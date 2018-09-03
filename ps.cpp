@@ -11,6 +11,8 @@
 // #include <netinet/in.h>
 #include <netdb.h>
 
+typedef std::chrono::high_resolution_clock::time_point time_point;
+
 void error(const char *msg)
 {
 	perror(msg);
@@ -71,13 +73,23 @@ int getRandomPort(std::vector<int> &vector)
 	return random;
 }
 
+time_point setTimer()
+{
+	return std::chrono::high_resolution_clock::now();
+}
+
+int getTimeInSeconds(time_point start, time_point end)
+{
+	return (int)std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+}
+
 int main(int argc, char *argv[])
 {
 	/* set timer */
-	std::chrono::high_resolution_clock::time_point started = std::chrono::high_resolution_clock::now();
+	time_point start = setTimer();
 
 	/* List of common ports based on https://bitninja.io/blog/2017/12/21/port-scanning-which-are-most-scanned-ports */
-	int commonPorts[31] = {23, 445, 1433, 2323, 110, 669, 8080, 3389, 79, 1350, 81, 5900, 2251, 2222, 139, 1417, 1103, 9000, 5000, 3372, 21, 1347, 42, 7000, 7938, 3390, 17, 1296, 119, 8000, 9010};
+	int vulnerablePorts[37] = {23, 445, 1433, 2323, 110, 669, 8080, 3389, 79, 1350, 81, 5900, 2251, 2222, 139, 1417, 1103, 9000, 5000, 3372, 21, 1347, 42, 7000, 7938, 3390, 17, 1296, 119, 8000, 9010, 25, 53, 135, 137, 138, 1434};
 
 	/* VARIABLES */
 
@@ -85,7 +97,7 @@ int main(int argc, char *argv[])
 	int MIN_PORT = 1;
 	int MAX_PORT = 8000;
 
-	std::vector<int> ports(1000); // ports should take MAX_PORT as argument
+	std::vector<int> ports(800); // ports should take MAX_PORT as argument
 	/* create a vector with all ports to be scanned */
 	std::iota(ports.begin(), ports.end(), MIN_PORT);
 
@@ -115,8 +127,6 @@ int main(int argc, char *argv[])
 	/* TCP connect scan */
 	while (ports.size() > 0)
 	{
-
-		std::chrono::high_resolution_clock::time_point scanstart = std::chrono::high_resolution_clock::now();
 		createSocket(socketfd);
 		getHostByName(server, host);
 		port = getRandomPort(ports);
@@ -133,17 +143,11 @@ int main(int argc, char *argv[])
 			closed++;
 		}
 		close(socketfd);
-		if (c < 0)
-		{
-			std::chrono::high_resolution_clock::time_point scanstop = std::chrono::high_resolution_clock::now();
-			printf("Connection time: %d ms\t", (int)std::chrono::duration_cast<std::chrono::milliseconds>(scanstop - scanstart).count());
-			printf("Port scanned: %d\n", port);
-		}
 	}
 	printf("\nClosed ports: %d\nOpen ports: %d\n", closed, open);
 
 	/* stop timer */
-	std::chrono::high_resolution_clock::time_point done = std::chrono::high_resolution_clock::now();
-	printf("Execution time: %d seconds\n", (int)std::chrono::duration_cast<std::chrono::seconds>(done - started).count());
+	time_point stop = setTimer();
+	printf("Execution time: %d seconds\n", getTimeInSeconds(start, stop));
 	return 0;
 }
