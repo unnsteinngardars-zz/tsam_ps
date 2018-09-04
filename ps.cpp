@@ -6,11 +6,13 @@
 #include <numeric>
 #include <random>
 #include <chrono>
+#include <pthread/pthread.h>
 // #include <sys/types.h>
 // #include <sys/socket.h>
 // #include <netinet/in.h>
 #include <netdb.h>
 
+using namespace std;
 typedef std::chrono::high_resolution_clock::time_point time_point;
 
 void error(const char *msg)
@@ -60,17 +62,12 @@ int getRandomPort(std::vector<int> &vector)
 	std::mt19937 mt(random_device());
 	std::uniform_int_distribution<int> uid(0, vector.size() - 1);
 	// Use the random integer as index to get random element;
-	int random = vector[uid(mt)];
+	int index = uid(mt);
+	int port = vector[index];
 	// Remove randomly selected element from vector
-	for (std::vector<int>::iterator it = vector.begin(); it != vector.end(); it++)
-	{
-		if (*it == random)
-		{
-			vector.erase(it);
-			break;
-		}
-	}
-	return random;
+	vector.erase(vector.begin() + index);
+	// Return the picked port
+	return port;
 }
 
 time_point setTimer()
@@ -88,17 +85,24 @@ int main(int argc, char *argv[])
 	/* set timer */
 	time_point start = setTimer();
 
-	/* List of common ports based on https://bitninja.io/blog/2017/12/21/port-scanning-which-are-most-scanned-ports */
-	int vulnerablePorts[37] = {23, 445, 1433, 2323, 110, 669, 8080, 3389, 79, 1350, 81, 5900, 2251, 2222, 139, 1417, 1103, 9000, 5000, 3372, 21, 1347, 42, 7000, 7938, 3390, 17, 1296, 119, 8000, 9010, 25, 53, 135, 137, 138, 1434};
-
 	/* VARIABLES */
 
 	/* MIN = 1, MAX = 49151 */
 	int MIN_PORT = 1;
-	int MAX_PORT = 8000;
+	int MAX_PORT = 1023;
 
-	std::vector<int> ports(800); // ports should take MAX_PORT as argument
-	/* create a vector with all ports to be scanned */
+	/* A vector with 101 commonly open and vulnerable ports */
+	// std::vector<int> ports = {13, 17, 19, 20, 21, 23, 25, 37, 42, 53, 69, 79,
+	// 						  81, 110, 111, 119, 123, 135, 137, 138, 139, 143, 161, 389, 445, 500, 518,
+	// 						  520, 587, 635, 669, 1002, 1024, 1025, 1026, 1027, 1028, 1029, 1050, 1103,
+	// 						  1296, 1347, 1350, 1417, 1433, 1723, 1863, 2049, 2222, 2251, 2302, 2323,
+	// 						  3372, 3389, 3390, 3784, 4444, 4567, 5000, 5050, 5060, 5093, 5351, 5353,
+	// 						  5678, 5900, 7000, 7547, 7676, 7938, 8000, 8080, 8082, 8594, 8767, 8888,
+	// 						  9000, 9010, 9915, 9916, 9987, 10000, 12203, 12345, 18067, 27374, 27960,
+	// 						  27965, 27971, 28786, 28960, 28964, 29070, 29072, 29900, 29901, 29961,
+	// 						  30005, 30722, 34321, 34818};
+
+	std::vector<int> ports(10000);
 	std::iota(ports.begin(), ports.end(), MIN_PORT);
 
 	int socketfd, port, c, closed, open;
@@ -125,10 +129,11 @@ int main(int argc, char *argv[])
 	printf("PORT\tSTATE\n");
 
 	/* TCP connect scan */
+	getHostByName(server, host);
 	while (ports.size() > 0)
 	{
+		time_point scanstart = setTimer();
 		createSocket(socketfd);
-		getHostByName(server, host);
 		port = getRandomPort(ports);
 		populateSocketAddress(server_addr, server, port);
 		c = connect(socketfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
@@ -143,6 +148,12 @@ int main(int argc, char *argv[])
 			closed++;
 		}
 		close(socketfd);
+		time_point scanstop = setTimer();
+		int time = getTimeInSeconds(scanstart, scanstop);
+		if (time > 3)
+		{
+			printf("Scan time on %d: %d seconds\n", port, time);
+		}
 	}
 	printf("\nClosed ports: %d\nOpen ports: %d\n", closed, open);
 
