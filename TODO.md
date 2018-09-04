@@ -1,11 +1,8 @@
 # TODO
 
-## SYN + ACK
+Generate 0.5s plus random interval, random time interval which is max 0.5s
+Apply sleep for random time
 
--   Connect to port list in ramdom order
--   Scans must occur with a time interval of 0.5s + random time
--   Use pthreads
+# Spyrja kennara
 
-## Other method
-
--   Determine the other method to implement
+Portlist, hafa þau 101 sem við höfum fundið sem eru oft opin/varnarlaus og bæta við 1 - 1023? F utan 22, 80, 433

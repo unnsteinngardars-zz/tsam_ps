@@ -6,7 +6,7 @@
 #include <numeric>
 #include <random>
 #include <chrono>
-#include <pthread/pthread.h>
+#include <thread>
 // #include <sys/types.h>
 // #include <sys/socket.h>
 // #include <netinet/in.h>
@@ -21,14 +21,18 @@ void error(const char *msg)
 	exit(0);
 }
 
-/* create a socket file descriptor */
-void createSocket(int &socketfd)
+/* Create and return a socket file descriptor */
+int createSocket()
 {
-	socketfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	// AF_INET address family for IPv4
+	// SOCK_STREAM indicates TCP communication
+	// IPPROTO_TCP TCP protocol
+	int socketfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (socketfd < 0)
 	{
 		error("ERROR opening socket");
 	}
+	return socketfd;
 }
 
 /* resolve host */
@@ -92,6 +96,7 @@ int main(int argc, char *argv[])
 	int MAX_PORT = 1023;
 
 	/* A vector with 101 commonly open and vulnerable ports */
+
 	// std::vector<int> ports = {13, 17, 19, 20, 21, 23, 25, 37, 42, 53, 69, 79,
 	// 						  81, 110, 111, 119, 123, 135, 137, 138, 139, 143, 161, 389, 445, 500, 518,
 	// 						  520, 587, 635, 669, 1002, 1024, 1025, 1026, 1027, 1028, 1029, 1050, 1103,
@@ -102,12 +107,14 @@ int main(int argc, char *argv[])
 	// 						  27965, 27971, 28786, 28960, 28964, 29070, 29072, 29900, 29901, 29961,
 	// 						  30005, 30722, 34321, 34818};
 
-	std::vector<int> ports(10000);
+	std::vector<int> ports(MAX_PORT);
 	std::iota(ports.begin(), ports.end(), MIN_PORT);
+
+	std::vector<int> finalports;
 
 	int socketfd, port, c, closed, open;
 
-	/* counter for closed ports */
+	/* counter for closed and open ports */
 	closed = 0;
 	open = 0;
 
@@ -128,16 +135,16 @@ int main(int argc, char *argv[])
 	printf("Scanning open ports for host %s\n\n", host);
 	printf("PORT\tSTATE\n");
 
-	/* TCP connect scan */
 	getHostByName(server, host);
+
+	/* TCP connect scan */
 	while (ports.size() > 0)
 	{
-		time_point scanstart = setTimer();
-		createSocket(socketfd);
+		socketfd = createSocket();
 		port = getRandomPort(ports);
 		populateSocketAddress(server_addr, server, port);
 		c = connect(socketfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
-		if (c >= 0)
+		if (c == 0)
 		{
 			printf("%d\tOpen\n", port);
 			open++;
@@ -148,12 +155,6 @@ int main(int argc, char *argv[])
 			closed++;
 		}
 		close(socketfd);
-		time_point scanstop = setTimer();
-		int time = getTimeInSeconds(scanstart, scanstop);
-		if (time > 3)
-		{
-			printf("Scan time on %d: %d seconds\n", port, time);
-		}
 	}
 	printf("\nClosed ports: %d\nOpen ports: %d\n", closed, open);
 
