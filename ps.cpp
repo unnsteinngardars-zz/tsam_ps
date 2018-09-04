@@ -7,6 +7,7 @@
 #include <random>
 #include <chrono>
 #include <thread>
+#include <unistd.h>
 // #include <sys/types.h>
 // #include <sys/socket.h>
 // #include <netinet/in.h>
@@ -84,6 +85,20 @@ int getTimeInSeconds(time_point start, time_point end)
 	return (int)std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
 }
 
+/**
+ * Return random time to sleep in microseconds
+*/
+int getRandomTime(double min, double max)
+{
+	std::random_device random_device;
+	std::mt19937 mt(random_device());
+	std::uniform_real_distribution<double> uid(min, max);
+	double random = uid(mt);
+	random += 0.5;
+	random *= 1000000;
+	return (int)random;
+}
+
 int main(int argc, char *argv[])
 {
 	/* set timer */
@@ -107,10 +122,8 @@ int main(int argc, char *argv[])
 	// 						  27965, 27971, 28786, 28960, 28964, 29070, 29072, 29900, 29901, 29961,
 	// 						  30005, 30722, 34321, 34818};
 
-	std::vector<int> ports(MAX_PORT);
+	std::vector<int> ports(10);
 	std::iota(ports.begin(), ports.end(), MIN_PORT);
-
-	std::vector<int> finalports;
 
 	int socketfd, port, c, closed, open;
 
@@ -140,6 +153,8 @@ int main(int argc, char *argv[])
 	/* TCP connect scan */
 	while (ports.size() > 0)
 	{
+		int randomTime = getRandomTime(0, 0.2);
+		usleep(randomTime);
 		socketfd = createSocket();
 		port = getRandomPort(ports);
 		populateSocketAddress(server_addr, server, port);
