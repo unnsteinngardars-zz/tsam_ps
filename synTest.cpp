@@ -6,7 +6,18 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <netdb.h>
+#include <sys/types.h>
+#include <ifaddrs.h>
 
+/* struct for the pseudo header, used for TCP checksum */
+struct PseudoHeader{
+    u_int32_t source;
+    u_int32_t dest;
+    u_int8_t zeroes;
+    u_int8_t protocol;
+    u_int16_t length; 
+};
 
 /*
     Generic checksum calculation function
@@ -37,26 +48,36 @@ unsigned short csum(unsigned short *ptr,int nbytes)
     return(answer);
 }
 
-struct PseudoHeader{
-    u_int32_t source;
-    u_int32_t dest;
-    u_int8_t zeroes;
-    u_int8_t protocol;
-    u_int16_t length; 
-};
-
-int main(int argc, char *argv[])
-{
-    /* Create a raw socket file descriptor
-    *  use IPPROTO_RAW to prevent using the IP_HDRINCL options
-    */
+/**
+ * Create a raw socket file descriptor and returns it
+ * In case of error, perror an error message and exit
+*/
+int createRawSocketFileDescriptor(){
     int socketfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
-
-    /* Display error and exit if the socket was not successfully created */
     if (socketfd < 0) {
         perror("Failed to create socket");
         exit(1);
     }
+    return socketfd;
+}
+
+
+void getSourceIpAddress(){
+    struct ifaddrs ** ifa;
+    // TODO: implement
+}
+
+int main(int argc, char *argv[])
+{
+
+    if (argc > 2) {
+        fprintf(stderr, "usage %s hostname\n", argv[0]);
+		exit(0);
+    }
+
+    char* host = argv[1];
+
+    int socketfd = createRawSocketFileDescriptor();
 
     /* Buffers */
 
@@ -72,9 +93,19 @@ int main(int argc, char *argv[])
     
     /* Populate socket address structure */
     struct sockaddr_in saddrin;
+    struct hostent *server;
+    
+    server = gethostbyname(host);
+
+    memcpy((char *)&saddrin.sin_addr.s_addr,
+        (char *)server->h_addr,
+        server->h_length);
+    
     saddrin.sin_family = AF_INET;
     saddrin.sin_port = htons(8888);
-    saddrin.sin_addr.s_addr = inet_addr("127.0.0.1");
+    // saddrin.sin_addr.s_addr = inet_addr(host);
+    
+    printf("scanning host: %s", inet_ntoa(saddrin.sin_addr));
 
     /*IP header*/
     struct iphdr *IPheader = (struct iphdr *) datagram;
@@ -89,7 +120,8 @@ int main(int argc, char *argv[])
     IPheader->protocol = 6;     // Protocol
     IPheader->check = 0;        // Checksum
     IPheader->saddr = inet_addr("127.0.0.1");   // Source address 
-    IPheader->daddr = inet_addr("127.0.0.1");   // Destination address
+    // IPheader->daddr = inet_addr("127.0.0.1");   // Destination address
+    IPheader->daddr = inet_addr(inet_ntoa(saddrin.sin_addr));
 
     IPheader->check = csum((unsigned short *) datagram, IPheader->tot_len);
 
@@ -97,7 +129,7 @@ int main(int argc, char *argv[])
     struct tcphdr *TCPheader = (struct tcphdr *) (datagram + sizeof (struct ip));
     
     TCPheader->source = htons (1234);   // Source port
-    TCPheader->dest = htons (80);       // Dest port
+    TCPheader->dest = htons (8888);       // Dest port
     TCPheader->seq = 0;                 // 
     TCPheader->ack_seq = 0;
     TCPheader->doff = 5;                //TCP header size
