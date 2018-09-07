@@ -3,7 +3,8 @@
 #include <unistd.h>
 #include <string.h>
 #include <vector>
-#include <numeric>
+// #include <numeric>
+#include <algorithm>
 #include <random>
 #include <chrono>
 #include <thread>
@@ -13,7 +14,6 @@
 // #include <netinet/in.h>
 #include <netdb.h>
 
-using namespace std;
 typedef std::chrono::high_resolution_clock::time_point time_point;
 
 void error(const char *msg)
@@ -54,6 +54,21 @@ void populateSocketAddress(sockaddr_in &address, hostent *&server, int port)
 		   (char *)server->h_addr,
 		   server->h_length);
 	address.sin_port = htons(port);
+}
+
+
+/**
+ * Get shuffled ports vector
+*/
+std::vector<int> getPorts(int size){
+    std::vector<int> ports;
+    for (int i = 1; i <= size; ++ i){
+        if(i != 20 || i != 443 || i != 80){
+            ports.push_back(i);
+        }
+    };
+    std::random_shuffle(ports.begin(), ports.end());
+    return ports;
 }
 
 /**
@@ -112,18 +127,18 @@ int main(int argc, char *argv[])
 
 	/* A vector with 101 commonly open and vulnerable ports */
 
-	// std::vector<int> ports = {13, 17, 19, 20, 21, 23, 25, 37, 42, 53, 69, 79,
-	// 						  81, 110, 111, 119, 123, 135, 137, 138, 139, 143, 161, 389, 445, 500, 518,
-	// 						  520, 587, 635, 669, 1002, 1024, 1025, 1026, 1027, 1028, 1029, 1050, 1103,
-	// 						  1296, 1347, 1350, 1417, 1433, 1723, 1863, 2049, 2222, 2251, 2302, 2323,
-	// 						  3372, 3389, 3390, 3784, 4444, 4567, 5000, 5050, 5060, 5093, 5351, 5353,
-	// 						  5678, 5900, 7000, 7547, 7676, 7938, 8000, 8080, 8082, 8594, 8767, 8888,
-	// 						  9000, 9010, 9915, 9916, 9987, 10000, 12203, 12345, 18067, 27374, 27960,
-	// 						  27965, 27971, 28786, 28960, 28964, 29070, 29072, 29900, 29901, 29961,
-	// 						  30005, 30722, 34321, 34818};
+	std::vector<int> ports = {13, 17, 19, 20, 21, 23, 25, 37, 42, 53, 69, 79,
+							  81, 110, 111, 119, 123, 135, 137, 138, 139, 143, 161, 389, 445, 500, 518,
+							  520, 587, 635, 669, 1002, 1024, 1025, 1026, 1027, 1028, 1029, 1050, 1103,
+							  1296, 1347, 1350, 1417, 1433, 1723, 1863, 2049, 2222, 2251, 2302, 2323,
+							  3372, 3389, 3390, 3784, 4444, 4567, 5000, 5050, 5060, 5093, 5351, 5353,
+							  5678, 5900, 7000, 7547, 7676, 7938, 8000, 8080, 8082, 8594, 8767, 8888,
+							  9000, 9010, 9915, 9916, 9987, 10000, 12203, 12345, 18067, 27374, 27960,
+							  27965, 27971, 28786, 28960, 28964, 29070, 29072, 29900, 29901, 29961,
+							  30005, 30722, 34321, 34818};
+	std::random_shuffle(ports.begin(), ports.end());
 
-	std::vector<int> ports(10);
-	std::iota(ports.begin(), ports.end(), MIN_PORT);
+	// std::vector<int> ports = getPorts(10000);
 
 	int socketfd, port, c, closed, open;
 
@@ -156,7 +171,10 @@ int main(int argc, char *argv[])
 		int randomTime = getRandomTime(0, 0.2);
 		usleep(randomTime);
 		socketfd = createSocket();
-		port = getRandomPort(ports);
+		int port = ports.back();
+		ports.pop_back();
+		printf("scanning port %d\n", port);
+			// port = getRandomPort(ports);
 		populateSocketAddress(server_addr, server, port);
 		c = connect(socketfd, (struct sockaddr *)&server_addr, sizeof(server_addr));
 		if (c == 0)

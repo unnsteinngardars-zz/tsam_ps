@@ -1,4 +1,4 @@
-tcpc: tcpc.cpp
-	g++ --std=c++11 -o tcpc tcpc.cpp
-syn: syn.cpp
-	g++ --std=c++11 -o syn syn.cpp -lpthread 
+connect-scan: connect-scan.cpp
+	g++ --std=c++11 -o connect-scan connect-scan.cpp
+syn-scan: syn-scan.cpp
+	g++ --std=c++11 -o syn-scan syn-scan.cpp -lpthread 
