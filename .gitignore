@@ -1,6 +1,6 @@
 *.o
 *.a
 .*
-syn
-tcpc
+syn-scan
+connect-scan
 .vscode

@@ -12,6 +12,7 @@
 #include <linux/if_link.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <sys/time.h>
 
 #include <vector>
 #include <algorithm>
@@ -32,6 +33,7 @@ namespace utilities{
     int createRawSocket();
     void setStaticIPheaderData(iphdr*& IPheader);
     void setStaticTCPheaderData(tcphdr*& TCPheader);
+    void applyTCPchecksum(utilities::pseudo_header & pseudo_header, tcphdr *& TCPheader);
 }
 
 /**
@@ -131,14 +133,23 @@ unsigned short utilities::csum(unsigned short *ptr,int nbytes)
 
 /**
  * Create a raw socket file descriptor and returns it
+ * Sets the IP include header options and configures timeout options
  * In case of error, perror an error message and exit
 */
 int utilities::createRawSocket(){
+    struct timeval tv;
+    tv.tv_sec = 0;
+    tv.tv_usec = 220000;
+
     int socketfd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     int one = 1;
     if (setsockopt (socketfd, IPPROTO_IP, IP_HDRINCL, &one, sizeof (one)) < 0)
     {
         perror("Error setting IP_HDRINCL");
+        exit(EXIT_FAILURE);
+    }
+    if(setsockopt(socketfd,SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv)) < 0){
+        perror("Failed to set timeout options");
         exit(EXIT_FAILURE);
     }
     if (socketfd < 0) {
@@ -169,6 +180,28 @@ void utilities::setStaticTCPheaderData(tcphdr*& TCPheader){
     TCPheader->window = htons (65535);          // Window size, max is 65.535 bytes
     TCPheader->check = 0;                       // Checksum
     TCPheader->urg_ptr = 0;                     // urgent pointer set to 0 like nmap
+}
+
+void utilities::applyTCPchecksum(utilities::pseudo_header& pseudo_header, tcphdr *& TCPheader){
+    /* get the total size needed for checksum buffer */
+    int checksum_buffer_size = sizeof(struct utilities::pseudo_header) + sizeof(struct tcphdr);
+
+    /* allocate memory for checksum buffer */
+    char * checksum_buffer = (char *) malloc(checksum_buffer_size);
+
+    /* Insert pseudo header into buffer */
+    memcpy(checksum_buffer, (char*)& pseudo_header, sizeof(struct utilities::pseudo_header));
+    
+    /* Insert TCP header into buffer */
+    memcpy(checksum_buffer + sizeof(struct utilities::pseudo_header), TCPheader, sizeof(struct tcphdr));
+
+    /* add the checksum to the TCP header */
+    // TCPheader->check = utilities::csum((unsigned short *) checksum_buffer, checksum_buffer_size);
+
+    /* Free the allocated memory for the tcp checksum buffer */
+    TCPheader->check = utilities::csum((unsigned short *) checksum_buffer, checksum_buffer_size);
+    free(checksum_buffer);
+
 }
 
 #endif

@@ -42,7 +42,8 @@ int main(int argc, char *argv[])
     char datagram[4096];
     // the tcp checksum buffer
     char* checksum_buffer;
-
+    char receiveBuffer[1024];
+    
     /* Zero datagram buffer */    
     memset (datagram, 0, 4096);
     
@@ -95,67 +96,56 @@ int main(int argc, char *argv[])
     pseudo_header.protocol = IPPROTO_TCP;
     pseudo_header.length = htons(sizeof(struct tcphdr));
 
-    /* get the total size needed for checksum buffer */
-    int checksum_buffer_size = sizeof(struct utilities::pseudo_header) + sizeof(struct tcphdr);
+    printf("PORT\tSTATUS\n");
+    for(int port = 9929; port < 9940; port++){
 
-    /* allocate memory for checksum buffer */
-    checksum_buffer = (char *) malloc(checksum_buffer_size);
+        /* Configure dynamic properties for datagram */
+        saddrin.sin_port = htons(port);
+        TCPheader->dest = saddrin.sin_port;
+        utilities::applyTCPchecksum(pseudo_header, TCPheader);
 
-    /* Insert pseudo header into buffer */
-    memcpy(checksum_buffer, (char*)& pseudo_header, sizeof(struct utilities::pseudo_header));
-    
-    /* Insert TCP header into buffer */
-    memcpy(checksum_buffer + sizeof(struct utilities::pseudo_header), TCPheader, sizeof(struct tcphdr));
+        /* SCANNING HOST */
 
-    /* add the checksum to the TCP header */
-    TCPheader->check = utilities::csum((unsigned short *) checksum_buffer, checksum_buffer_size);
+        /* Create a file descriptor for sending datagram */
+        int socketfd = utilities::createRawSocket();
 
-    /* Free the allocated memory for the tcp checksum buffer */
-    free(checksum_buffer);
+        /* Send Datagram */
+        if (sendto(socketfd, datagram, IPheader->tot_len, 0, (struct sockaddr *) &saddrin, sizeof(saddrin)) < 0){
+            perror("Error setting IP_HDRINCL");
+            exit(EXIT_FAILURE);
+        }
 
+        /* Receive Packet */
 
+        // Buffer for receiving data.
+        
+        memset (receiveBuffer, 0, 1024);
+        
+        if (recv(socketfd, receiveBuffer, sizeof(receiveBuffer), 0) < 0){
+            if(errno != EWOULDBLOCK || errno != EAGAIN){
+                perror("Error receiving from host");
+                exit(EXIT_FAILURE);
 
-    /* SCANNING HOST */
+            }
+        }
+        
+        struct iphdr * iprcv = (struct iphdr * ) receiveBuffer;
+        struct tcphdr * tcp_rcv = (struct tcphdr * ) (receiveBuffer + iprcv->ihl * 4);
+        
 
-    /* Create a file descriptor for sending datagram */
-    int socketfd = utilities::createRawSocket();
-    printf("scanning host ip: (%s)\n", inet_ntoa(saddrin.sin_addr));
+        int * tcp_ptr = (int * ) tcp_rcv;
+        int flags = ntohs(*(tcp_ptr + 3));
+        int ack = flags & 0x010;
+        int syn = flags & 0x002;
 
+        if (ack && syn) {
+            printf("%d\topen\n", port);
+        }
+        else {
+            printf("%d\tclosed\n", port);
+        }
 
-    /* Send Datagram */
-    if (sendto(socketfd, datagram, IPheader->tot_len, 0, (struct sockaddr *) &saddrin, sizeof(saddrin)) < 0){
-        perror("Error setting IP_HDRINCL");
-        exit(EXIT_FAILURE);
     }
-
-    
-    /* Receive Packet */
-
-    // Buffer for receiving data.
-    char receiveBuffer[1024];
-    memset (receiveBuffer, 0, 1024);
-    
-    if (recv(socketfd, receiveBuffer, sizeof(receiveBuffer), 0) < 0){
-        perror("Error setting IP_HDRINCL");
-        exit(EXIT_FAILURE);
-    }
-    struct iphdr * iprcv = (struct iphdr * ) receiveBuffer;
-    struct tcphdr * tcp_rcv = (struct tcphdr * ) (receiveBuffer + iprcv->ihl * 4);
-    
-
-    int * tcp_ptr = (int * ) tcp_rcv;
-    int flags = ntohs(*(tcp_ptr + 3));
-    int ack = flags & 0x010;
-    int syn = flags & 0x002;
-
-    if (ack && syn) {
-        printf("port %d open\n", dest_port);
-    }
-    else {
-        printf("port %d closed\n", dest_port);
-    }
-
-
 
 
 
