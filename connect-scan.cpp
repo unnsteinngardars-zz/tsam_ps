@@ -16,12 +16,6 @@
 
 typedef std::chrono::high_resolution_clock::time_point time_point;
 
-void error(const char *msg)
-{
-	perror(msg);
-	exit(0);
-}
-
 /* Create and return a socket file descriptor */
 int createSocket()
 {
@@ -31,7 +25,8 @@ int createSocket()
 	int socketfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (socketfd < 0)
 	{
-		error("ERROR opening socket");
+		perror("Error creating socket");
+		exit(EXIT_FAILURE);
 	}
 	return socketfd;
 }
@@ -42,7 +37,8 @@ void getHostByName(hostent *&server, char *host)
 	server = gethostbyname(host);
 	if (server == NULL)
 	{
-		error("ERROR, no such host");
+		perror("Error, no such host");
+		exit(EXIT_FAILURE);
 	}
 }
 
