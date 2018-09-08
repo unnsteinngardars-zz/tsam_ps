@@ -15,11 +15,12 @@
 #include <numeric>
 #include <string>
 #include <pthread.h>
-#include "utilities.h"
+#include "scan_utilities.h"
 
 struct thread_data_t
 {
 	int id;
+    
 };
 
 void* scan(void * arg){
@@ -31,10 +32,10 @@ int main(int argc, char *argv[])
 {     
 
     /* Create vector of hosts, would be possible to read from file */
-    std::vector<std::string> hosts = utilities::getHosts();
+    std::vector<std::string> hosts = scan_utilities::getHosts();
 
     /* Get ports */
-    std::vector<int> ports = utilities::getPorts(10);
+    std::vector<int> ports = scan_utilities::getPorts(10);
 
     
     /* Buffers */
@@ -49,7 +50,7 @@ int main(int argc, char *argv[])
     
     /* Declare variables */
     struct sockaddr_in saddrin;
-    struct utilities::pseudo_header pseudo_header;
+    struct scan_utilities::pseudo_header pseudo_header;
 
     /* Thread variables */
     int NUM_THREADS = 20;
@@ -57,7 +58,7 @@ int main(int argc, char *argv[])
 	pthread_t thr[NUM_THREADS];
 	thread_data_t thr_data[NUM_THREADS];
 
-    // char * source_ip = utilities::getLocalIp();
+    char * test = scan_utilities::getLocalIp();
     char source_ip[20];
     char dest_ip[20];
 
@@ -76,15 +77,15 @@ int main(int argc, char *argv[])
 
     /*Construct IP header */
     struct iphdr *IPheader = (struct iphdr *) datagram;
-    utilities::setStaticIPheaderData(IPheader);
+    scan_utilities::setStaticIPheaderData(IPheader);
     IPheader->saddr = inet_addr(source_ip);     // Source address
     IPheader->daddr = saddrin.sin_addr.s_addr;  // Destination address
-    IPheader->check = utilities::csum((unsigned short *) datagram, IPheader->tot_len);
+    IPheader->check = scan_utilities::csum((unsigned short *) datagram, IPheader->tot_len);
 
 
     /*Construct TCP Header */
     struct tcphdr *TCPheader = (struct tcphdr *) (datagram + sizeof (struct iphdr));
-    utilities::setStaticTCPheaderData(TCPheader);
+    scan_utilities::setStaticTCPheaderData(TCPheader);
     TCPheader->source = htons (source_port);    // Source port
     TCPheader->dest = saddrin.sin_port;         // Dest port
 
@@ -102,12 +103,12 @@ int main(int argc, char *argv[])
         /* Configure dynamic properties for datagram */
         saddrin.sin_port = htons(port);
         TCPheader->dest = saddrin.sin_port;
-        utilities::applyTCPchecksum(pseudo_header, TCPheader);
+        scan_utilities::applyTCPchecksum(pseudo_header, TCPheader);
 
         /* SCANNING HOST */
 
         /* Create a file descriptor for sending datagram */
-        int socketfd = utilities::createRawSocket();
+        int socketfd = scan_utilities::createRawSocket();
 
         /* Send Datagram */
         if (sendto(socketfd, datagram, IPheader->tot_len, 0, (struct sockaddr *) &saddrin, sizeof(saddrin)) < 0){

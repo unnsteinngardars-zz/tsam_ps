@@ -3,20 +3,18 @@
 #include <unistd.h>
 #include <string.h>
 #include <vector>
-// #include <numeric>
 #include <algorithm>
 #include <random>
 #include <chrono>
 #include <thread>
 #include <unistd.h>
-// #include <sys/types.h>
-// #include <sys/socket.h>
-// #include <netinet/in.h>
 #include <netdb.h>
 
 typedef std::chrono::high_resolution_clock::time_point time_point;
 
-/* Create and return a socket file descriptor */
+/**
+ * Create socket
+*/
 int createSocket()
 {
 	// AF_INET address family for IPv4
@@ -42,7 +40,9 @@ void getHostByName(hostent *&server, char *host)
 	}
 }
 
-/* populate sockaddr_in data structure */
+/**
+ * Populate sockaddr_in structure
+*/
 void populateSocketAddress(sockaddr_in &address, hostent *&server, int port)
 {
 	address.sin_family = AF_INET;
@@ -117,10 +117,6 @@ int main(int argc, char *argv[])
 
 	/* VARIABLES */
 
-	/* MIN = 1, MAX = 49151 */
-	int MIN_PORT = 1;
-	int MAX_PORT = 1023;
-
 	/* A vector with 101 commonly open and vulnerable ports */
 
 	std::vector<int> ports = {13, 17, 19, 20, 21, 23, 25, 37, 42, 53, 69, 79,
@@ -132,9 +128,6 @@ int main(int argc, char *argv[])
 							  9000, 9010, 9915, 9916, 9987, 10000, 12203, 12345, 18067, 27374, 27960,
 							  27965, 27971, 28786, 28960, 28964, 29070, 29072, 29900, 29901, 29961,
 							  30005, 30722, 34321, 34818};
-	std::random_shuffle(ports.begin(), ports.end());
-
-	// std::vector<int> ports = getPorts(10000);
 
 	int socketfd, port, c, closed, open;
 
