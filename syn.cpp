@@ -68,6 +68,8 @@ void Syn::scan(){
         int port = ports.back();
         ports.pop_back();
 
+        // printf("scanning port: %d\n", port);
+
         /* configure sockaddr_in and tcp header for fresh sendto attempt */
         setSockAddrInDestPort(port);
         setTCPheaderDestPort(port);

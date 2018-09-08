@@ -78,11 +78,10 @@ int main(int argc, char *argv[])
     /* Clean up threads */
     for(i = 0; i < NUM_THREADS; ++i){
         pthread_join(thr[i], NULL);
-        printf("cleaning up thread %d\n", i);
     }
 
     /* Stop timer and print elapsed time in seconds */
 	time_point stop = scan_utilities::setTimer();
-	printf("Execution time: %d seconds\n", scan_utilities::getTimeInSeconds(start, stop));
+	printf("\nExecution time: %d seconds\n", scan_utilities::getTimeInSeconds(start, stop));
 
 }
