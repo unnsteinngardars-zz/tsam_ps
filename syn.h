@@ -28,7 +28,7 @@ class Syn{
         char dest_ip [32];
         char source_ip [32];
         std::vector<int> ports;
-        
+
         sockaddr_in createSocketAddress(int port);
         iphdr* createIPheader(char* datagram, struct sockaddr_in& saddrin, int port);
         tcphdr* createTCPheader(char* datagram, struct sockaddr_in& saddrin);
