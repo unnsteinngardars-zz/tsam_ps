@@ -38,6 +38,7 @@ void *scan_host(void* arg){
 
                 if(open){
                     printf("%s,%d\n",host_ip, port);
+                    fflush(stdout);
                 }
                 /* Random sleep before scanning, from 0 to 0.2 seconds in this case */
                 double sleeptime = scan_utilities::getRandomTimeInMicroseconds(0, 0.2);

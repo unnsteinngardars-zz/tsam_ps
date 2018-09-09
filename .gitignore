@@ -1,6 +1,6 @@
 *.o
 *.a
 .*
-syn-scan
+scan
 connect-scan
 .vscode
