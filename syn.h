@@ -39,7 +39,7 @@ class Syn{
         /* public methods */
         bool scan(int port);
         int popPort();
-        Syn(char* s, char * d);
+        Syn(char* s, const char * d);
         void setWellKnownPorts();
         void setPortsFromOneToMax(int max);
         bool portsEmpty();

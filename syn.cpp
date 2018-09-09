@@ -5,7 +5,7 @@
  * @param s source_ip
  * @param d dest_ip
 */
-Syn::Syn(char* s, char* d){
+Syn::Syn(char* s, const char* d){
     strcpy(source_ip, s);
     strcpy(dest_ip, d);
 }
