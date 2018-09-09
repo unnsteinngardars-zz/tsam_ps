@@ -30,16 +30,14 @@ namespace scan_utilities{
         u_int16_t length; 
     };
 
-    // char * getLocalIp(); // Not working
-    std::vector<int> getPorts(int size);
     std::vector<int> getKnownPorts();
     std::vector<char *> getHosts();
     unsigned short csum(unsigned short *ptr,int nbytes);
     int createRawSocket();
+    int getRandomTimeInMicroseconds(double min, double max);
     void setStaticIPheaderData(iphdr*& IPheader);
     void setStaticTCPheaderData(tcphdr*& TCPheader);
     void applyTCPchecksum(struct pseudo_header & pseudo_header, tcphdr *& TCPheader);
-    int getRandomTimeInMicroseconds(double min, double max);
     time_point setTimer();
     int getTimeInSeconds(time_point start, time_point end);
     int getRandomPort(std::vector<int>& vector);

@@ -10,6 +10,9 @@ Syn::Syn(char* s, const char* d){
     strcpy(dest_ip, d);
 }
 
+/**
+ * Create a sockaddr_in structure
+*/
 sockaddr_in Syn::createSocketAddress(int port){
     struct hostent *server;
     server = gethostbyname(dest_ip);
@@ -66,12 +69,6 @@ void Syn::setWellKnownPorts(){
     ports = scan_utilities::getKnownPorts();
 }
 
-/**
- * Gets a vector of ports from range 1 to max
-*/
-void Syn::setPortsFromOneToMax(int max){
-    ports = scan_utilities::getPorts(max);
-}
 
 /**
  * Pop a random port from ports vector

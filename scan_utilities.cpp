@@ -1,41 +1,4 @@
 #include "scan_utilities.h"
-/**
- * NO READY!
- * Read local ip on linux
- * Based on man7.org/linux/man-pages/man3/getifaddrs.3.html
-*/
-// char * scan_utilities::getLocalIp() {
-//     int MAX = 32;
-//     struct ifaddrs *ifaddr, *current;
-//     char buffer[MAX];
-//     memset(buffer, 0, MAX);
-//     int family, s;
-//     if(getifaddrs(&ifaddr) < 0){
-//         perror("getifaddr error");
-//         exit(0);
-//     }
-
-//     for(current = ifaddr; current != NULL; current = current->ifa_next){
-//         if(current->ifa_addr == NULL){
-//             continue;
-//         }
-//         family = current->ifa_addr->sa_family;
-//         if(family == AF_INET || family == AF_INET6){
-//             if(strcmp(current->ifa_name, "enp0s3") == 0 || strcmp(current->ifa_name, "eth0") == 0){
-//                 int size = (family == AF_INET) ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
-//                 s = getnameinfo(current->ifa_addr, size, buffer, MAX, NULL,0, NI_NUMERICHOST);
-
-//                 if (s != 0){
-//                     perror("getnameinfo error");
-//                     exit(EXIT_FAILURE);
-//                 }
-//                 break;
-//             }
-//         }
-//     }
-//     printf("source ip from buffer: %s\n", buffer);
-//     return "buffer";
-// };
 
 /**
  * helper function for shuffling ports
@@ -45,21 +8,6 @@ int getRand(int i){
     return std::rand() % i;
 }
 
-/**
- * Get shuffled ports vector from 1 to max
- * Omitts port 20, 80 and 443
-*/
-std::vector<int> scan_utilities::getPorts(int max){
-    std::vector<int> ports;
-    for (int i = 1; i <= max; ++ i){
-        if(i != 20 || i != 443 || i != 80){
-            ports.push_back(i);
-        }
-    };
-    std::random_shuffle(ports.begin(), ports.end());
-    std::random_shuffle(ports.begin(), ports.end(), getRand);
-    return ports;
-}
 
 /**
  * Get vector of well known vulnerable ports

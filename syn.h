@@ -37,11 +37,10 @@ class Syn{
 
     public:
         /* public methods */
+        Syn(char* s, const char * d);
         bool scan(int port);
         int popPort();
-        Syn(char* s, const char * d);
         void setWellKnownPorts();
-        void setPortsFromOneToMax(int max);
         bool portsEmpty();
 };
 

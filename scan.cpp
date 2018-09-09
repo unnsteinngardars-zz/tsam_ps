@@ -26,7 +26,6 @@ void *scan_host(void* arg){
             pthread_mutex_lock(&lock);
             const char * host_ip = scan_utilities::getRandomHost(hosts).c_str();
             pthread_mutex_unlock(&lock);
-
             /* create new syn to scan ports for host */
             Syn *syn = new Syn(source_ip, host_ip);
             syn->setWellKnownPorts();
@@ -37,8 +36,9 @@ void *scan_host(void* arg){
                 pthread_mutex_unlock(&port_lock);
 
                 if(open){
-                    printf("%s,%d\n",host_ip, port);
-                    fflush(stdout);
+                    printf("%d\tOPEN\t%s\n", port, host_ip);
+                    // printf("%s,%d\n",host_ip, port);
+                    // fflush(stdout);
                 }
                 /* Random sleep before scanning, from 0 to 0.2 seconds in this case */
                 double sleeptime = scan_utilities::getRandomTimeInMicroseconds(0, 0.2);
@@ -63,14 +63,14 @@ void *scan_host(void* arg){
 int main(int argc, char *argv[])
 {   
     /* Validate arguments */
-    if(argc < 2) {
-        printf("wrong use: %s <source_ip> <ip_range.txt>", argv[0]);
+    if(argc < 3) {
+        printf("wrong use: %s <source_ip> <ip_range.txt>\n", argv[0]);
         exit(EXIT_FAILURE);
     }
 
     source_ip = argv[1];
-    /* Read ip's from file */
-    
+
+    /* Read ip's from file */  
     std::ifstream file;
     file.open(argv[2]);
     if (!file.is_open()){
@@ -83,7 +83,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    
     /* start timer */
     time_point start = scan_utilities::setTimer();  
 
@@ -99,6 +98,8 @@ int main(int argc, char *argv[])
     
     source_ip = argv[1];
 	pthread_t thr[NUM_THREADS];
+
+    printf("PORT\tSTATUS\tHOST\n\n");
 
     /* Create threads  */
     for (i = 0; i < NUM_THREADS; ++i){
