@@ -22,6 +22,9 @@ sockaddr_in Syn::createSocketAddress(int port){
     return saddrin;
 }
 
+/**
+ * Create IP header
+*/
 iphdr* Syn::createIPheader(char* datagram, sockaddr_in& saddrin, int port){
     struct iphdr *IPheader = (struct iphdr *) datagram;
     scan_utilities::setStaticIPheaderData(IPheader);
@@ -31,6 +34,9 @@ iphdr* Syn::createIPheader(char* datagram, sockaddr_in& saddrin, int port){
     return IPheader;
 }
 
+/**
+ * Create TCP header
+*/
 tcphdr* Syn::createTCPheader(char* datagram, sockaddr_in& saddrin){
     struct tcphdr *TCPheader = (struct tcphdr *) (datagram + sizeof(struct iphdr));
     scan_utilities::setStaticTCPheaderData(TCPheader);
@@ -39,7 +45,9 @@ tcphdr* Syn::createTCPheader(char* datagram, sockaddr_in& saddrin){
     return TCPheader;
 }   
 
-
+/**
+ * Create pseudo header
+*/
 scan_utilities::pseudo_header Syn::createPseudoHeader(sockaddr_in& saddrin){
     struct scan_utilities::pseudo_header pseudo_header;
     pseudo_header.source = inet_addr(source_ip);
@@ -49,8 +57,6 @@ scan_utilities::pseudo_header Syn::createPseudoHeader(sockaddr_in& saddrin){
     pseudo_header.length = htons(sizeof(struct tcphdr));
     return pseudo_header;
 }
-
-
 
 
 /**
@@ -67,12 +73,16 @@ void Syn::setPortsFromOneToMax(int max){
     ports = scan_utilities::getPorts(max);
 }
 
+/**
+ * Pop a random port from ports vector
+*/
 int Syn::popPort(){
-    int port = ports.back();
-    ports.pop_back();
-    return port;
+    return scan_utilities::getRandomPort(ports);
 }
 
+/**
+ * check if ports vector is empty
+*/
 bool Syn::portsEmpty(){
     return ports.empty();
 }
@@ -121,14 +131,6 @@ bool Syn::scan(int port){
     int flags = ntohs(*(tcp_ptr + 3));
     int ack = flags & 0x010;
     int syn = flags & 0x002;
-
-    /* Debugging printf */
-    // printf("first 0x%x\n", *(tcp_ptr));
-    // printf("second 0x%x\n", *(tcp_ptr +1));
-    // printf("third 0x%x\n", *(tcp_ptr +2));
-    // printf("fourth 0x%x\n", *(tcp_ptr +3));
-    // printf("fifth 0x%x\n", *(tcp_ptr +4));
-    // printf("ntohs fourth: 0x%x\n", flags);
 
     close(socketfd);
     return ack && syn;

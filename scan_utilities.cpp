@@ -62,7 +62,7 @@ std::vector<int> scan_utilities::getPorts(int max){
 }
 
 /**
- * Get shuffled ports vector of well known vulnerable ports
+ * Get vector of well known vulnerable ports
 */
 std::vector<int> scan_utilities::getKnownPorts(){
     std::vector<int> ports = {13, 17, 19, 20, 21, 23, 25, 37, 42, 53, 69, 79,
@@ -74,9 +74,6 @@ std::vector<int> scan_utilities::getKnownPorts(){
 							  9000, 9010, 9915, 9916, 9929,9987, 10000, 12203, 12345, 18067, 27374, 27960,
 							  27965, 27971, 28786, 28960, 28964, 29070, 29072, 29900, 29901, 29961,
 							  30005, 30722, 31337, 34321, 34818};
-    // std::vector<int> ports = {9929, 31337, 13, 17};
-    std::random_shuffle(ports.begin(), ports.end());
-    std::random_shuffle(ports.begin(), ports.end(), getRand);
     return ports;
 }
 
@@ -252,11 +249,32 @@ int scan_utilities::getRandomPort(std::vector<int> &vector)
 	int index = uid(mt);
 	int port = vector[index];
 	// Remove randomly selected element from vector
-	// vector.erase(vector.begin() + index);
+	vector.erase(vector.begin() + index);
 	// Return the picked port
 	return port;
 }
 
+/**
+ * remove and return a random host from given vector
+ * @param vector the vector to remove a host from
+*/
+std::string scan_utilities::getRandomHost(std::vector<std::string>&vector){
+	// Create random integers from 0 to vector.size() - 1;
+	std::random_device random_device;
+	std::mt19937 mt(random_device());
+	std::uniform_int_distribution<int> uid(0, vector.size() - 1);
+	// Use the random integer as index to get random element;
+	int index = uid(mt);
+	std::string host = vector[index];
+	// Remove randomly selected element from vector
+	vector.erase(vector.begin() + index);
+	// Return the picked host
+	return host;
+}
+
+/**
+ * get a random source port from a fixed range
+*/
 int scan_utilities::getRandomSourcePort(){
     std::random_device random_device;
     std::mt19937 mt(random_device());

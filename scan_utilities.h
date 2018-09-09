@@ -43,6 +43,7 @@ namespace scan_utilities{
     time_point setTimer();
     int getTimeInSeconds(time_point start, time_point end);
     int getRandomPort(std::vector<int>& vector);
+    std::string getRandomHost(std::vector<std::string>& vector);
     int getRandomSourcePort();
 }
 

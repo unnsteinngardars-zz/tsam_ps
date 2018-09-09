@@ -8,6 +8,7 @@
 /* GLOBAL VARIABLES SHARED BY THREADS */
 std::vector<std::string>hosts;
 static char* source_ip;
+static const int MAX_THREADS = 100;
 
 /* mutex for threads */
 static pthread_mutex_t lock;
@@ -18,33 +19,35 @@ static pthread_mutex_t port_lock;
 */
 void *scan_host(void* arg){
 
+    while(!hosts.empty()){
 
-    pthread_mutex_lock(&lock);
-    const char * host_ip = hosts.back().c_str();
+        if(!hosts.empty()){
+            /* mutex before getting host */
+            pthread_mutex_lock(&lock);
+            const char * host_ip = scan_utilities::getRandomHost(hosts).c_str();
+            pthread_mutex_unlock(&lock);
 
-    hosts.pop_back();
-    pthread_mutex_unlock(&lock);
-    
-    /* Create scanner of type syn */
-    /* Ideally here the scanner would be chosen based on input from user */
+            /* create new syn to scan ports for host */
+            Syn *syn = new Syn(source_ip, host_ip);
+            syn->setWellKnownPorts();
+            while(!syn->portsEmpty()){
+                int port = syn->popPort();
+                pthread_mutex_lock(&port_lock);
+                bool open = syn->scan(port);
+                pthread_mutex_unlock(&port_lock);
 
-    Syn syn(source_ip, host_ip);
-    syn.setWellKnownPorts();
-    while(!syn.portsEmpty()){
-        int port = syn.popPort();
-        pthread_mutex_lock(&port_lock);
-        bool open = syn.scan(port);
-        pthread_mutex_unlock(&port_lock);
-
-        if(open){
-            printf("%d\topen\t%s\n", port, host_ip);
+                if(open){
+                    printf("%s,%d\n",host_ip, port);
+                }
+                /* Random sleep before scanning, from 0 to 0.2 seconds in this case */
+                double sleeptime = scan_utilities::getRandomTimeInMicroseconds(0, 0.2);
+                usleep(sleeptime);
+            }
+            /* delete syn */
+            delete(syn);
         }
-        /* Random sleep before scanning, from 0 to 0.2 seconds in this case */
-        double sleeptime = scan_utilities::getRandomTimeInMicroseconds(0, 0.2);
-        usleep(sleeptime);
-    }
-    
 
+    }
     /* thread finishing up */
     pthread_exit(NULL);
 }
@@ -82,10 +85,15 @@ int main(int argc, char *argv[])
     
     /* start timer */
     time_point start = scan_utilities::setTimer();  
-    // hosts = scan_utilities::getHosts();
 
     /* initialize variables */
-	int NUM_THREADS = hosts.size();
+    int NUM_THREADS;
+    if (hosts.size() > MAX_THREADS){
+        NUM_THREADS = MAX_THREADS;
+    }
+    else{
+	    NUM_THREADS = hosts.size();
+    }
     int i;
     
     source_ip = argv[1];
@@ -101,8 +109,6 @@ int main(int argc, char *argv[])
     }
 
     /* Display results header */
-    printf("PORT\tSTATUS\tHOST\n");
-
     /* Clean up threads */
     for(i = 0; i < NUM_THREADS; ++i){
         pthread_join(thr[i], NULL);
