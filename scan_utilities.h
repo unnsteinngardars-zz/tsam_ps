@@ -42,6 +42,8 @@ namespace scan_utilities{
     int getRandomTimeInMicroseconds(double min, double max);
     time_point setTimer();
     int getTimeInSeconds(time_point start, time_point end);
+    int getRandomPort(std::vector<int>& vector);
+    int getRandomSourcePort();
 }
 
 #endif

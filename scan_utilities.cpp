@@ -71,9 +71,10 @@ std::vector<int> scan_utilities::getKnownPorts(){
 							  1296, 1347, 1350, 1417, 1433, 1723, 1863, 2049, 2222, 2251, 2302, 2323,
 							  3372, 3389, 3390, 3784, 4444, 4567, 5000, 5050, 5060, 5093, 5351, 5353,
 							  5678, 5900, 7000, 7547, 7676, 7938, 8000, 8080, 8082, 8594, 8767, 8888,
-							  9000, 9010, 9915, 9916, 9987, 10000, 12203, 12345, 18067, 27374, 27960,
+							  9000, 9010, 9915, 9916, 9929,9987, 10000, 12203, 12345, 18067, 27374, 27960,
 							  27965, 27971, 28786, 28960, 28964, 29070, 29072, 29900, 29901, 29961,
-							  30005, 30722, 34321, 34818};
+							  30005, 30722, 31337, 34321, 34818};
+    // std::vector<int> ports = {9929, 31337, 13, 17};
     std::random_shuffle(ports.begin(), ports.end());
     std::random_shuffle(ports.begin(), ports.end(), getRand);
     return ports;
@@ -87,6 +88,7 @@ std::vector<char *> scan_utilities::getHosts(){
     std::vector<char *> hosts;
     hosts.push_back((char * ) "130.208.243.61");
     hosts.push_back((char * )"45.33.32.156");
+    // hosts.push_back((char * )"127.0.0.1");
     return hosts;
 }
 
@@ -127,7 +129,7 @@ unsigned short scan_utilities::csum(unsigned short *ptr,int nbytes)
 int scan_utilities::createRawSocket(){
     struct timeval tv;
     tv.tv_sec = 0;
-    tv.tv_usec = 220000;
+    tv.tv_usec = 500000;
 
     int socketfd = socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
     int one = 1;
@@ -197,10 +199,9 @@ void scan_utilities::applyTCPchecksum(struct pseudo_header& pseudo_header, struc
     memcpy(checksum_buffer + sizeof(struct scan_utilities::pseudo_header), TCPheader, sizeof(struct tcphdr));
 
     /* add the checksum to the TCP header */
-    // TCPheader->check = scan_utilities::csum((unsigned short *) checksum_buffer, checksum_buffer_size);
+    TCPheader->check = scan_utilities::csum((unsigned short *) checksum_buffer, checksum_buffer_size);
 
     /* Free the allocated memory for the tcp checksum buffer */
-    TCPheader->check = scan_utilities::csum((unsigned short *) checksum_buffer, checksum_buffer_size);
     free(checksum_buffer);
 
 }
@@ -235,4 +236,30 @@ time_point scan_utilities::setTimer()
 int scan_utilities::getTimeInSeconds(time_point start, time_point end)
 {
 	return (int)std::chrono::duration_cast<std::chrono::seconds>(end - start).count();
+}
+
+/**
+ * remove and return a random port from the given vector
+ * @param vector the vector to remove a port from
+*/
+int scan_utilities::getRandomPort(std::vector<int> &vector)
+{
+	// Create random integers from 0 to vector.size() - 1;
+	std::random_device random_device;
+	std::mt19937 mt(random_device());
+	std::uniform_int_distribution<int> uid(0, vector.size() - 1);
+	// Use the random integer as index to get random element;
+	int index = uid(mt);
+	int port = vector[index];
+	// Remove randomly selected element from vector
+	// vector.erase(vector.begin() + index);
+	// Return the picked port
+	return port;
+}
+
+int scan_utilities::getRandomSourcePort(){
+    std::random_device random_device;
+    std::mt19937 mt(random_device());
+    std::uniform_int_distribution<int> uid(444,55555);
+    return uid(mt);
 }

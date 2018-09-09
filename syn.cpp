@@ -6,41 +6,52 @@
  * @param d dest_ip
 */
 Syn::Syn(char* s, char* d){
-
-    /* configure source and dest */
-    server = gethostbyname(d);
     strcpy(source_ip, s);
-	memcpy((char *)&saddrin.sin_addr.s_addr,
-		   (char *)server->h_addr,
-		   server->h_length);
-    memset(datagram, 0, DATAGRAM_SIZE);
-    
-    /* configure saddrin */
-    saddrin.sin_family = AF_INET;
+    strcpy(dest_ip, d);
+}
 
-    /* configure IP header */
-    IPheader = (struct iphdr * ) datagram;
+sockaddr_in Syn::createSocketAddress(int port){
+    struct hostent *server;
+    server = gethostbyname(dest_ip);
+    struct sockaddr_in saddrin;
+    memcpy((char *)&saddrin.sin_addr.s_addr,
+        (char *)server->h_addr,
+        server->h_length);
+    saddrin.sin_family = AF_INET;
+    saddrin.sin_port = htons(port);
+    return saddrin;
+}
+
+iphdr* Syn::createIPheader(char* datagram, sockaddr_in& saddrin, int port){
+    struct iphdr *IPheader = (struct iphdr *) datagram;
     scan_utilities::setStaticIPheaderData(IPheader);
-    IPheader->saddr = inet_addr(s);
+    IPheader->saddr = inet_addr(source_ip);
     IPheader->daddr = saddrin.sin_addr.s_addr;
     IPheader->check = scan_utilities::csum((unsigned short *) datagram, IPheader->tot_len);
+    return IPheader;
+}
 
-    /* configure TCP header */
-    TCPheader = (struct tcphdr*) (datagram + sizeof(struct iphdr));
+tcphdr* Syn::createTCPheader(char* datagram, sockaddr_in& saddrin){
+    struct tcphdr *TCPheader = (struct tcphdr *) (datagram + sizeof(struct iphdr));
     scan_utilities::setStaticTCPheaderData(TCPheader);
-    TCPheader->source = htons (source_port);    // Source port
+    TCPheader->source = htons(scan_utilities::getRandomSourcePort());
+    TCPheader->dest = saddrin.sin_port;         // Dest port
+    return TCPheader;
+}   
 
-    /* configure pseudo header */
-    pseudo_header.source = inet_addr(s);
+
+scan_utilities::pseudo_header Syn::createPseudoHeader(sockaddr_in& saddrin){
+    struct scan_utilities::pseudo_header pseudo_header;
+    pseudo_header.source = inet_addr(source_ip);
     pseudo_header.dest = saddrin.sin_addr.s_addr;
     pseudo_header.zeroes = 0;
     pseudo_header.protocol = IPPROTO_TCP;
     pseudo_header.length = htons(sizeof(struct tcphdr));
-
-    /* open socket */
-    socketfd = scan_utilities::createRawSocket();
-
+    return pseudo_header;
 }
+
+
+
 
 /**
  * Gets a vector with well known ports for vulnerabilities
@@ -56,66 +67,69 @@ void Syn::setPortsFromOneToMax(int max){
     ports = scan_utilities::getPorts(max);
 }
 
+int Syn::popPort(){
+    int port = ports.back();
+    ports.pop_back();
+    return port;
+}
+
+bool Syn::portsEmpty(){
+    return ports.empty();
+}
+
 /**
- * Scans the port range 
+ * Scan a port 
 */
-void Syn::scan(){
-    while(!ports.empty()){
-        /* sleep for a random interval */
-        double sleeptime = scan_utilities::getRandomTimeInMicroseconds(0, 0.2);
-        usleep(sleeptime);
-        /* get port */
-        int port = ports.back();
-        ports.pop_back();
+bool Syn::scan(int port){
+    /* buffers */
+    char datagram[DATAGRAM_SIZE];
+    
+    memset(datagram, 0, DATAGRAM_SIZE);
 
-        // printf("scanning port: %d\n", port);
+    int socketfd = scan_utilities::createRawSocket();
 
-        /* configure sockaddr_in and tcp header for fresh sendto attempt */
-        setSockAddrInDestPort(port);
-        setTCPheaderDestPort(port);
-        
-        if(sendto(socketfd, datagram, IPheader->tot_len, 0, (struct sockaddr *) &saddrin, sizeof(saddrin)) < 0){
-            perror("Error sending packet");
+    /* create TCP/IP headers */   
+    struct sockaddr_in saddrin = createSocketAddress(port);
+    struct iphdr *IPheader = createIPheader(datagram,saddrin, port);
+    struct tcphdr *TCPheader = createTCPheader(datagram, saddrin);
+    struct scan_utilities::pseudo_header pseudo_header = createPseudoHeader(saddrin);
+    scan_utilities::applyTCPchecksum(pseudo_header, TCPheader);
+
+    /* send packet */
+    if(sendto(socketfd, datagram, IPheader->tot_len, 0, (struct sockaddr *) &saddrin, sizeof(saddrin)) < 0){
+        perror("Error sending packet");
+        exit(EXIT_FAILURE);
+    }
+
+    char receive_buffer[1024];
+    memset(receive_buffer, 0, 1024);
+    
+    /* receive packet */
+    if(recv(socketfd, receive_buffer, sizeof(receive_buffer), 0) < 0){
+        if(errno != EWOULDBLOCK || errno != EAGAIN){
+            perror("Error receiving from host");
             exit(EXIT_FAILURE);
         }
-
-        /* zero receive buffer */
-        memset(receive_buffer, 0, 1024);
-        
-        /* receive packet */
-        if(recv(socketfd, receive_buffer, sizeof(receive_buffer), 0) < 0){
-            if(errno != EWOULDBLOCK || errno != EAGAIN){
-                perror("Error receiving from host");
-                exit(EXIT_FAILURE);
-            }
-        }
-
-        /* analyze answer */
-        iprcv = (struct iphdr * ) receive_buffer;
-        tcp_rcv = (struct tcphdr * ) (receive_buffer + iprcv->ihl * 4);
-        
-        int * tcp_ptr = (int * ) tcp_rcv;
-        int flags = ntohs(*(tcp_ptr + 3));
-        int ack = flags & 0x010;
-        int syn = flags & 0x002;
-
-        /* print result to console, possible to print to file! */
-        if (ack && syn) {
-            printf("%d\topen\t%s\n", port, inet_ntoa(saddrin.sin_addr));
-        }
     }
-}
 
-/**
- * Configure the port for the sockaddr_in struct
-*/
-void Syn::setSockAddrInDestPort(int port) {
-    saddrin.sin_port = htons(port);
-}
+    /* analyze answer */
+    struct iphdr *iprcv = (struct iphdr * ) receive_buffer;
+    struct tcphdr *tcp_rcv = (struct tcphdr * ) (receive_buffer + iprcv->ihl * 4);
+    
+    /* create pointer to tcp recieve and access flags */
+    int * tcp_ptr = (int * ) tcp_rcv;
+    int flags = ntohs(*(tcp_ptr + 3));
+    int ack = flags & 0x010;
+    int syn = flags & 0x002;
 
-/**
- * Configure the port for the TCPheader
-*/
-void Syn::setTCPheaderDestPort(int port ){
-    TCPheader->dest = port;         // Dest port
+    /* Debugging printf */
+    // printf("first 0x%x\n", *(tcp_ptr));
+    // printf("second 0x%x\n", *(tcp_ptr +1));
+    // printf("third 0x%x\n", *(tcp_ptr +2));
+    // printf("fourth 0x%x\n", *(tcp_ptr +3));
+    // printf("fifth 0x%x\n", *(tcp_ptr +4));
+    // printf("ntohs fourth: 0x%x\n", flags);
+
+    close(socketfd);
+    return ack && syn;
 }

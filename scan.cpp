@@ -7,7 +7,7 @@ static char* source_ip;
 
 /* mutex for threads */
 static pthread_mutex_t lock;
-
+static pthread_mutex_t port_lock;
 
 /**
  * Function for each thread to pop a host from vector and scan it with the selected scanner
@@ -23,14 +23,24 @@ void *scan_host(void* arg){
     
     /* Create scanner of type syn */
     /* Ideally here the scanner would be chosen based on input from user */
+
     Syn syn(source_ip, host_ip);
     syn.setWellKnownPorts();
-    
-    /* Random sleep before scanning, from 0 to 0.2 seconds in this case */
-    double sleeptime = scan_utilities::getRandomTimeInMicroseconds(0, 0.2);
-    usleep(sleeptime);
+    while(!syn.portsEmpty()){
+        int port = syn.popPort();
+        pthread_mutex_lock(&port_lock);
+        bool open = syn.scan(port);
+        pthread_mutex_unlock(&port_lock);
 
-    syn.scan();
+        if(open){
+            printf("%d\topen\t%s\n", port, host_ip);
+        }
+
+        /* Random sleep before scanning, from 0 to 0.2 seconds in this case */
+        double sleeptime = scan_utilities::getRandomTimeInMicroseconds(0, 0.2);
+        usleep(sleeptime);
+    }
+    
 
     /* thread finishing up */
     pthread_exit(NULL);

@@ -25,39 +25,24 @@ static const int DATAGRAM_SIZE = 4096;
 
 class Syn{
     private:
-        /* Socket FD */
-        int socketfd;
-
-        /* buffers */
-        char datagram[DATAGRAM_SIZE];
-        char receive_buffer[DATAGRAM_SIZE];
-        char * checksum_buffer;
-
         /* ip's and ports */
         char dest_ip [32];
         char source_ip [32];
-        int source_port = 55555;
         std::vector<int> ports;
 
-        /* structs */   
-        struct sockaddr_in saddrin;
-        struct scan_utilities::pseudo_header pseudo_header;
-        struct iphdr *IPheader;
-        struct tcphdr *TCPheader;
-        struct iphdr *iprcv;
-        struct tcphdr *tcp_rcv;
-        struct hostent *server;
-
-        /* private methods */
-        void setSockAddrInDestPort(int port);
-        void setTCPheaderDestPort(int port);
+        sockaddr_in createSocketAddress(int port);
+        iphdr* createIPheader(char* datagram, struct sockaddr_in& saddrin, int port);
+        tcphdr* createTCPheader(char* datagram, struct sockaddr_in& saddrin);
+        scan_utilities::pseudo_header createPseudoHeader(sockaddr_in& saddrin);
 
     public:
         /* public methods */
-        void scan();
+        bool scan(int port);
+        int popPort();
         Syn(char* s, char * d);
         void setWellKnownPorts();
         void setPortsFromOneToMax(int max);
+        bool portsEmpty();
 };
 
 #endif
