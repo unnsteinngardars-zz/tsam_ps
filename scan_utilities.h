@@ -8,8 +8,6 @@
 #include <ifaddrs.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
-#include <linux/if_link.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 #include <sys/time.h>
