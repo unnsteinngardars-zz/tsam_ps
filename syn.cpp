@@ -96,7 +96,6 @@ bool Syn::scan(int port){
     
     memset(datagram, 0, DATAGRAM_SIZE);
     int socketfd = scan_utilities::createRawSocket();
-    printf("scanning..\n");
 
     /* create TCP/IP headers */   
     struct sockaddr_in saddrin = createSocketAddress(port);
