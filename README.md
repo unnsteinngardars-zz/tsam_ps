@@ -1,6 +1,8 @@
 # tsam_ps
 Project 1 - TSAM - Fall 2018
 
+This project is a school assignment from Reykjavík University. The reason for this repository being public is to showcase code examples. Copying this code to use for the same assignment is considered plagiarism and will likely result in a penalty carried out by the teacher.
+
 ## The scanner 
 The main scanner is a syn-ack scanner.
 ```make scan```
